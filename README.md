@@ -1,4 +1,4 @@
-# Cloud platforms as the basis of technology entrepreneurship
+# introduction in web tech
 ## Описание репозитория
 Вы находитесь в репозитории учебной дисциплины "Введение в веб технологии" реализующейся преподавателями [факультета инфокоммуникационных технологий](https://fict.itmo.ru) Университета ИТМО. 
 
