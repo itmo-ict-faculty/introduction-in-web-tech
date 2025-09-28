@@ -1,9 +1,9 @@
-## Лабораторная работа №3 "Развертывание приложений в Kubernetes"
+## Лабораторная работа №3 "Мониторинг с Prometheus и Grafana"
 ### Описание
-Это третья лабораторная работа по изучению развертывания приложений в Kubernetes кластере и работе с Helm charts.
+Это третья лабораторная работа по настройке системы мониторинга с использованием Prometheus для сбора метрик и Grafana для визуализации данных.
 
 ### Цель работы
-Научиться развертывать приложения в Kubernetes, работать с различными ресурсами K8s, изучить основы Helm и преимущества его использования.
+Научиться настраивать локальную систему мониторинга, собирать метрики с помощью Prometheus и создавать дашборды в Grafana для визуализации данных.
 
 ### Правила по оформлению
 
@@ -13,72 +13,163 @@
 
 #### Обычная лабораторная работа
 
-**Развертывание сервиса в Kubernetes:**
+**Настройка мониторинга с Prometheus и Grafana:**
 
-1. **Подготовка локального кластера:**
-   - Установить и запустить minikube (или другой локальный Kubernetes кластер)
-   - Проверить статус кластера: `kubectl cluster-info`
-   - Убедиться, что kubectl настроен для работы с кластером
+1. **Создание конфигурации Prometheus:**
+   - Создать папку `prometheus` для конфигурации
+   - Создать файл `prometheus/prometheus.yml` со следующим содержимым:
+     ```yaml
+     global:
+       scrape_interval: 15s
+     
+     scrape_configs:
+       - job_name: 'prometheus'
+         static_configs:
+           - targets: ['localhost:9090']
+     
+       - job_name: 'node-exporter'
+         static_configs:
+           - targets: ['node-exporter:9100']
+     ```
 
-2. **Создание YAML манифестов:**
-   - Создать Deployment для вашего приложения
-   - Создать Service для доступа к приложению
-   - Добавить ConfigMap или Secret (третий ресурс Kubernetes)
-   - Все манифесты должны быть в отдельных YAML файлах
+2. **Запуск Node Exporter:**
+   - Запустить контейнер Node Exporter для сбора системных метрик:
+     ```bash
+     docker run -d \
+       --name node-exporter \
+       --restart=unless-stopped \
+       -p 9100:9100 \
+       -v "/proc:/host/proc:ro" \
+       -v "/sys:/host/sys:ro" \
+       -v "/:/rootfs:ro" \
+       prom/node-exporter \
+       --path.procfs=/host/proc \
+       --path.rootfs=/rootfs \
+       --path.sysfs=/host/sys \
+       --collector.filesystem.mount-points-exclude="^/(sys|proc|dev|host|etc)($$|/)"
+     ```
+   - Проверить работу: `curl http://localhost:9100/metrics`
 
-3. **Развертывание сервиса:**
-   - Развернуть все ресурсы одной командой: `kubectl apply -f .`
-   - Проверить статус подов: `kubectl get pods`
-   - Проверить статус сервисов: `kubectl get services`
-   - Убедиться, что все ресурсы созданы корректно
+3. **Запуск Prometheus:**
+   - Создать том для данных Prometheus:
+     ```bash
+     docker volume create prometheus-data
+     ```
+   - Запустить контейнер Prometheus:
+     ```bash
+     docker run -d \
+       --name prometheus \
+       --restart=unless-stopped \
+       -p 9090:9090 \
+       -v prometheus-data:/prometheus \
+       -v $(pwd)/prometheus:/etc/prometheus \
+       prom/prometheus \
+       --config.file=/etc/prometheus/prometheus.yml \
+       --storage.tsdb.path=/prometheus \
+       --web.console.libraries=/etc/prometheus/console_libraries \
+       --web.console.templates=/etc/prometheus/consoles \
+       --storage.tsdb.retention.time=200h \
+       --web.enable-lifecycle
+     ```
+   - Проверить работу: открыть `http://localhost:9090` в браузере
 
-4. **Тестирование работоспособности:**
-   - Получить доступ к сервису через port-forward или minikube service
-   - Открыть приложение в браузере и убедиться в его работоспособности
-   - Продемонстрировать работу всех настроенных ресурсов
+4. **Запуск Grafana:**
+   - Создать том для данных Grafana:
+     ```bash
+     docker volume create grafana-data
+     ```
+   - Запустить контейнер Grafana:
+     ```bash
+     docker run -d \
+       --name grafana \
+       --restart=unless-stopped \
+       -p 3000:3000 \
+       -v grafana-data:/var/lib/grafana \
+       -e "GF_SECURITY_ADMIN_PASSWORD=admin" \
+       grafana/grafana
+     ```
+   - Проверить работу: открыть `http://localhost:3000` в браузере (логин: admin, пароль: admin)
 
-5. **Изучение документации:**
-   - Прочитать книгу "Kubernetes_for_Kids_ITSummaPress.pdf"
-   - В отчете кратко описать ключевые концепции из книги
+5. **Настройка Grafana:**
+   - Войти в Grafana (admin/admin)
+   - Добавить источник данных Prometheus:
+     - Configuration → Data Sources → Add data source
+     - Выбрать Prometheus
+     - URL: `http://prometheus:9090`
+     - Save & Test
+   - Создать дашборд:
+     - Create → Dashboard → Add visualization
+     - Выбрать источник данных Prometheus
+     - Добавить метрику: `node_cpu_seconds_total`
+     - Сохранить дашборд
+
+6. **Тестирование системы:**
+   - Проверить все контейнеры: `docker ps`
+   - Открыть Prometheus и убедиться, что метрики собираются
+   - Открыть Grafana и проверить отображение графиков
+   - Создать несколько графиков для разных метрик (CPU, память, диск)
 
 #### Лабораторная работа со звездочкой
 
-**Создание и использование Helm Chart:**
+**Тестирование безопасности веб-сайтов:**
 
-1. **Создание Helm Chart:**
-   - Создать Helm chart на основе обычной лабораторной работы
-   - Структурировать YAML файлы в соответствии с требованиями Helm
-   - Создать values.yaml с настраиваемыми параметрами
-   - Добавить Chart.yaml с метаданными
+1. **Выбор цели для тестирования:**
+   - Выбрать доступный сайт для тестирования (рекомендуется не очень популярные сайты)
+   - Примеры подходящих сайтов: сайты местных организаций, спортивных федераций, небольших компаний
+   - НЕ выбирать: Google, Яндекс, крупные банки, государственные сайты
+   - Записать URL выбранного сайта в отчет
 
-2. **Развертывание через Helm:**
-   - Установить Helm chart в кластер: `helm install`
-   - Проверить статус релиза: `helm list`
-   - Убедиться, что приложение работает корректно
+2. **Подготовка инструментов:**
+   - Установить ffuf (если нет): `go install github.com/ffuf/ffuf@latest`
+   - Подготовить wordlist для перебора (можно использовать стандартные)
+   - Настроить браузер для перехвата запросов (опционально)
 
-3. **Обновление приложения:**
-   - Внести изменения в сервис (например, изменить текст или версию)
-   - Обновить values.yaml или шаблоны
-   - Выполнить upgrade релиза: `helm upgrade`
-   - Проверить, что изменения применились
+3. **Тестирование Path Traversal:**
+   - Проверить уязвимость path traversal на различных эндпоинтах
+   - Попробовать запросы типа:
+     - `http://example.com/../../../etc/passwd`
+     - `http://example.com/..%2F..%2F..%2Fetc%2Fpasswd`
+     - `http://example.com/....//....//....//etc/passwd`
+   - Проверить разные кодировки и варианты обхода фильтров
+   - Записать все попытки и результаты в отчет
 
-4. **Документирование процесса:**
-   - Сделать скриншоты всего процесса (установка, проверка, обновление)
-   - Приложить все использованные файлы к отчету
-   - Описать три причины, по которым Helm удобнее классического деплоя через kubectl
+4. **Перебор страниц через ffuf:**
+   - Запустить ffuf для поиска скрытых директорий:
+     ```bash
+     ffuf -w /path/to/wordlist.txt -u http://example.com/FUZZ -mc 200,301,302,403
+     ```
+   - Попробовать разные wordlist'ы (common.txt, directory-list-2.3-medium.txt)
+   - Настроить фильтры для исключения ложных срабатываний
+   - Проанализировать найденные директории и файлы
 
-### Результаты лабораторной работы
-В результате данной работы у вас должно быть:
+5. **Дополнительные проверки безопасности:**
+   - Проверить наличие файлов конфигурации (.env, config.php, backup.sql)
+   - Поиск файлов с расширениями .bak, .old, .backup
+   - Проверка на наличие административных панелей (/admin, /wp-admin, /phpmyadmin)
+   - Анализ HTTP заголовков на предмет утечки информации
+   - Проверка на наличие открытых директорий без index файлов
 
-- Работающий сервис в Kubernetes кластере
-- YAML манифесты для развертывания (Deployment, Service, ConfigMap/Secret)
-- (Для работы со звездочкой) Helm chart с работоспособным релизом
-- (Для работы со звездочкой) Скриншоты процесса и все файлы
-- Отчет по лабораторной работе
+6. **Документирование результатов:**
+   - Сделать скриншоты всех попыток взлома
+   - Описать каждую проверенную уязвимость
+   - Указать успешность каждой попытки
+   - Записать найденные интересные файлы или директории
+   - Сформулировать выводы о безопасности сайта
+
+**Важные ограничения:**
+- БЕЗ DDoS атак и подбора паролей
+- БЕЗ использования найденных уязвимостей в злонамеренных целях
+- При обнаружении реальной уязвимости связаться с преподавателем
+- Цель - изучение влияния неточностей в конфигурации на безопасность
+
+**Результат:** Вы должны понимать основные уязвимости веб-приложений и уметь их тестировать этично.
+
 
 ### Полезные ссылки
 
-- [Minikube Documentation](https://minikube.sigs.k8s.io/docs/)
-- [Kubernetes Documentation](https://kubernetes.io/docs/)
-- [Helm Documentation](https://helm.sh/docs/)
-- [Kubernetes for Kids Book](https://github.com/ITSummaPress/Kubernetes-for-Kids)
+- [Prometheus Documentation](https://prometheus.io/docs/)
+- [Grafana Documentation](https://grafana.com/docs/)
+- [Node Exporter](https://github.com/prometheus/node_exporter)
+- [Docker Compose Documentation](https://docs.docker.com/compose/)
+- [Prometheus Python Client](https://github.com/prometheus/client_python)
+
