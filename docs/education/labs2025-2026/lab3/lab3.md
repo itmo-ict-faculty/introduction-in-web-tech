@@ -1,9 +1,9 @@
-## Лабораторная работа №4 "CI/CD: хорошие и плохие практики"
+## Лабораторная работа №3 "Мониторинг с Prometheus и Grafana"
 ### Описание
-Это четвертая лабораторная работа по изучению лучших и худших практик написания CI/CD пайплайнов и работы с секретами.
+Это третья лабораторная работа по настройке системы мониторинга с использованием Prometheus для сбора метрик и Grafana для визуализации данных.
 
 ### Цель работы
-Изучить распространенные ошибки в CI/CD пайплайнах, научиться писать качественные конфигурации и правильно работать с секретами.
+Научиться настраивать локальную систему мониторинга, собирать метрики с помощью Prometheus и создавать дашборды в Grafana для визуализации данных.
 
 ### Правила по оформлению
 
@@ -13,58 +13,163 @@
 
 #### Обычная лабораторная работа
 
-**Создание "плохого" и "хорошего" CI/CD пайплайна:**
+**Настройка мониторинга с Prometheus и Grafana:**
 
-1. **Написать "плохой" CI/CD файл:**
-   - Создать CI/CD конфигурацию (GitHub Actions, GitLab CI, Jenkins и т.д.) с не менее чем пятью "bad practices"
-   - Примеры плохих практик: хардкод секретов, отсутствие кэширования, запуск всех тестов на каждом коммите, отсутствие fail-fast, неоптимальная структура этапов, отсутствие артефактов
+1. **Создание конфигурации Prometheus:**
+   - Создать папку `prometheus` для конфигурации
+   - Создать файл `prometheus/prometheus.yml` со следующим содержимым:
+     ```yaml
+     global:
+       scrape_interval: 15s
+     
+     scrape_configs:
+       - job_name: 'prometheus'
+         static_configs:
+           - targets: ['localhost:9090']
+     
+       - job_name: 'node-exporter'
+         static_configs:
+           - targets: ['node-exporter:9100']
+     ```
 
-2. **Написать "хороший" CI/CD файл:**
-   - Исправить все плохие практики из первого файла
-   - Добавить кэширование зависимостей
-   - Настроить параллельное выполнение задач
-   - Добавить fail-fast механизмы
-   - Оптимизировать структуру пайплайна
+2. **Запуск Node Exporter:**
+   - Запустить контейнер Node Exporter для сбора системных метрик:
+     ```bash
+     docker run -d \
+       --name node-exporter \
+       --restart=unless-stopped \
+       -p 9100:9100 \
+       -v "/proc:/host/proc:ro" \
+       -v "/sys:/host/sys:ro" \
+       -v "/:/rootfs:ro" \
+       prom/node-exporter \
+       --path.procfs=/host/proc \
+       --path.rootfs=/rootfs \
+       --path.sysfs=/host/sys \
+       --collector.filesystem.mount-points-exclude="^/(sys|proc|dev|host|etc)($$|/)"
+     ```
+   - Проверить работу: `curl http://localhost:9100/metrics`
 
-3. **Создать README.md с описанием:**
-   - Каждой плохой практики в "плохом" CI/CD файле
-   - Объяснение, почему эта практика плохая
-   - Как она была исправлена в "хорошем" файле
-   - Влияние исправления на результат (скорость выполнения, безопасность, надежность)
+3. **Запуск Prometheus:**
+   - Создать том для данных Prometheus:
+     ```bash
+     docker volume create prometheus-data
+     ```
+   - Запустить контейнер Prometheus:
+     ```bash
+     docker run -d \
+       --name prometheus \
+       --restart=unless-stopped \
+       -p 9090:9090 \
+       -v prometheus-data:/prometheus \
+       -v $(pwd)/prometheus:/etc/prometheus \
+       prom/prometheus \
+       --config.file=/etc/prometheus/prometheus.yml \
+       --storage.tsdb.path=/prometheus \
+       --web.console.libraries=/etc/prometheus/console_libraries \
+       --web.console.templates=/etc/prometheus/consoles \
+       --storage.tsdb.retention.time=200h \
+       --web.enable-lifecycle
+     ```
+   - Проверить работу: открыть `http://localhost:9090` в браузере
+
+4. **Запуск Grafana:**
+   - Создать том для данных Grafana:
+     ```bash
+     docker volume create grafana-data
+     ```
+   - Запустить контейнер Grafana:
+     ```bash
+     docker run -d \
+       --name grafana \
+       --restart=unless-stopped \
+       -p 3000:3000 \
+       -v grafana-data:/var/lib/grafana \
+       -e "GF_SECURITY_ADMIN_PASSWORD=admin" \
+       grafana/grafana
+     ```
+   - Проверить работу: открыть `http://localhost:3000` в браузере (логин: admin, пароль: admin)
+
+5. **Настройка Grafana:**
+   - Войти в Grafana (admin/admin)
+   - Добавить источник данных Prometheus:
+     - Configuration → Data Sources → Add data source
+     - Выбрать Prometheus
+     - URL: `http://prometheus:9090`
+     - Save & Test
+   - Создать дашборд:
+     - Create → Dashboard → Add visualization
+     - Выбрать источник данных Prometheus
+     - Добавить метрику: `node_cpu_seconds_total`
+     - Сохранить дашборд
+
+6. **Тестирование системы:**
+   - Проверить все контейнеры: `docker ps`
+   - Открыть Prometheus и убедиться, что метрики собираются
+   - Открыть Grafana и проверить отображение графиков
+   - Создать несколько графиков для разных метрик (CPU, память, диск)
 
 #### Лабораторная работа со звездочкой
 
-**Красивая работа с секретами:**
+**Тестирование безопасности веб-сайтов:**
 
-1. **Настройка Hashicorp Vault:**
-   - Поднять Hashicorp Vault локально или в облаке
-   - Настроить аутентификацию и авторизацию
-   - Создать секреты для использования в CI/CD
+1. **Выбор цели для тестирования:**
+   - Выбрать доступный сайт для тестирования (рекомендуется не очень популярные сайты)
+   - Примеры подходящих сайтов: сайты местных организаций, спортивных федераций, небольших компаний
+   - НЕ выбирать: Google, Яндекс, крупные банки, государственные сайты
+   - Записать URL выбранного сайта в отчет
 
-2. **Интеграция с CI/CD:**
-   - Настроить CI/CD пайплайн для получения секретов из Vault
-   - Обеспечить, чтобы секреты не светились в логах
-   - Продемонстрировать использование секретов в пайплайне
+2. **Подготовка инструментов:**
+   - Установить ffuf (если нет): `go install github.com/ffuf/ffuf@latest`
+   - Подготовить wordlist для перебора (можно использовать стандартные)
+   - Настроить браузер для перехвата запросов (опционально)
 
-3. **Документирование решения:**
-   - В README аргументировать, почему выбранный способ работы с секретами красивый
-   - Описать преимущества использования Vault
-   - Объяснить, почему хранение секретов в CI/CD переменных репозитория не является хорошей практикой
+3. **Тестирование Path Traversal:**
+   - Проверить уязвимость path traversal на различных эндпоинтах
+   - Попробовать запросы типа:
+     - `http://example.com/../../../etc/passwd`
+     - `http://example.com/..%2F..%2F..%2Fetc%2Fpasswd`
+     - `http://example.com/....//....//....//etc/passwd`
+   - Проверить разные кодировки и варианты обхода фильтров
+   - Записать все попытки и результаты в отчет
 
-### Результаты лабораторной работы
-В результате данной работы у вас должно быть:
+4. **Перебор страниц через ffuf:**
+   - Запустить ffuf для поиска скрытых директорий:
+     ```bash
+     ffuf -w /path/to/wordlist.txt -u http://example.com/FUZZ -mc 200,301,302,403
+     ```
+   - Попробовать разные wordlist'ы (common.txt, directory-list-2.3-medium.txt)
+   - Настроить фильтры для исключения ложных срабатываний
+   - Проанализировать найденные директории и файлы
 
-- "Плохой" и "хороший" CI/CD файлы
-- README.md с подробным описанием практик
-- (Для работы со звездочкой) Настроенный Hashicorp Vault
-- (Для работы со звездочкой) CI/CD пайплайн с интеграцией Vault
-- (Для работы со звездочкой) Документация по работе с секретами
-- Отчет по лабораторной работе
+5. **Дополнительные проверки безопасности:**
+   - Проверить наличие файлов конфигурации (.env, config.php, backup.sql)
+   - Поиск файлов с расширениями .bak, .old, .backup
+   - Проверка на наличие административных панелей (/admin, /wp-admin, /phpmyadmin)
+   - Анализ HTTP заголовков на предмет утечки информации
+   - Проверка на наличие открытых директорий без index файлов
+
+6. **Документирование результатов:**
+   - Сделать скриншоты всех попыток взлома
+   - Описать каждую проверенную уязвимость
+   - Указать успешность каждой попытки
+   - Записать найденные интересные файлы или директории
+   - Сформулировать выводы о безопасности сайта
+
+**Важные ограничения:**
+- БЕЗ DDoS атак и подбора паролей
+- БЕЗ использования найденных уязвимостей в злонамеренных целях
+- При обнаружении реальной уязвимости связаться с преподавателем
+- Цель - изучение влияния неточностей в конфигурации на безопасность
+
+**Результат:** Вы должны понимать основные уязвимости веб-приложений и уметь их тестировать этично.
+
 
 ### Полезные ссылки
 
-- [GitHub Actions Best Practices](https://docs.github.com/en/actions/learn-github-actions/best-practices-for-github-actions)
-- [GitLab CI/CD Best Practices](https://docs.gitlab.com/ee/ci/pipelines/pipeline_efficiency.html)
-- [HashiCorp Vault Documentation](https://www.vaultproject.io/docs)
-- [Secrets Management Best Practices](https://www.vaultproject.io/docs/secrets)
+- [Prometheus Documentation](https://prometheus.io/docs/)
+- [Grafana Documentation](https://grafana.com/docs/)
+- [Node Exporter](https://github.com/prometheus/node_exporter)
+- [Docker Compose Documentation](https://docs.docker.com/compose/)
+- [Prometheus Python Client](https://github.com/prometheus/client_python)
 
