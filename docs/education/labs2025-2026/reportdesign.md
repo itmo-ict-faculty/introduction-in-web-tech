@@ -13,14 +13,14 @@
 - README.md (в нем должно содержаться описание вашего репозитория, интересные замечания по деятельности и т.д)
 - LICENSE (вы можете выбрать любую понравившуюся вам лицензию)
 
-Также вам необходимо создать папки с названием lab1, lab2 и т.д по количеству лабораторных работ. В каждой папке вы создаете файл lab1_report.md, lab2_report.md и т.д в соответствующих папках.
+Также вам необходимо создать папки с названием lab0, lab1, lab2, lab3 по количеству лабораторных работ. В каждой папке вы создаете файл lab0_report.md, lab1_report.md, lab2_report.md, lab3_report.md в соответствующих папках.
 В самих файлах, в шапке у вас должна быть следующая информация:
 
 ```markdown
 University: [ITMO University](https://itmo.ru/ru/)
 Faculty: [FICT](https://fict.itmo.ru)
-Course: [Cloud platforms as the basis of technology entrepreneurship](https://) ADD link
-Year: 2023/2024
+Course: [Введение в веб технологии](https://itmo-ict-faculty.github.io/introduction-in-web-tech/)
+Year: 2025/2026
 Group: K66666
 Author: Filianin Ivan Victorovich
 Lab: Lab1
