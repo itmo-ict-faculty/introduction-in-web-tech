@@ -19,76 +19,74 @@
 1. **Создание конфигурации Prometheus:**
       - Создать папку `prometheus` для конфигурации
       - Создать файл `prometheus/prometheus.yml` со следующим содержимым:
-     ```yaml
-     global:
-       scrape_interval: 15s
-     
-     scrape_configs:
-       - job_name: 'prometheus'
-         static_configs:
-           - targets: ['localhost:9090']
-     
-       - job_name: 'node-exporter'
-         static_configs:
-           - targets: ['node-exporter:9100']
-     ```
+            global:
+                  scrape_interval: 15s
+            
+            scrape_configs:
+                  - job_name: 'prometheus'
+                  static_configs:
+                  - targets: ['localhost:9090']
+            
+                  - job_name: 'node-exporter'
+                  static_configs:
+                  - targets: ['node-exporter:9100']
 
 2. **Запуск Node Exporter:**
       - Запустить контейнер Node Exporter для сбора системных метрик:
-     ```bash
-     docker run -d \
-       --name node-exporter \
-       --restart=unless-stopped \
-       -p 9100:9100 \
-       -v "/proc:/host/proc:ro" \
-       -v "/sys:/host/sys:ro" \
-       -v "/:/rootfs:ro" \
-       prom/node-exporter \
-       --path.procfs=/host/proc \
-       --path.rootfs=/rootfs \
-       --path.sysfs=/host/sys \
-       --collector.filesystem.mount-points-exclude="^/(sys|proc|dev|host|etc)($$|/)"
-     ```
+
+            docker run -d \
+                  --name node-exporter \
+                  --restart=unless-stopped \
+                  -p 9100:9100 \
+                  -v "/proc:/host/proc:ro" \
+                  -v "/sys:/host/sys:ro" \
+                  -v "/:/rootfs:ro" \
+                  prom/node-exporter \
+                  --path.procfs=/host/proc \
+                  --path.rootfs=/rootfs \
+                  --path.sysfs=/host/sys \
+                  --collector.filesystem.mount-points-exclude="^/(sys|proc|dev|host|etc)($$|/)"
+
       - Проверить работу: `curl http://localhost:9100/metrics`
 
 3. **Запуск Prometheus:**
       - Создать том для данных Prometheus:
-     ```bash
-     docker volume create prometheus-data
-     ```
+
+            docker volume create prometheus-data
+
       - Запустить контейнер Prometheus:
-     ```bash
-     docker run -d \
-       --name prometheus \
-       --restart=unless-stopped \
-       -p 9090:9090 \
-       -v prometheus-data:/prometheus \
-       -v $(pwd)/prometheus:/etc/prometheus \
-       prom/prometheus \
-       --config.file=/etc/prometheus/prometheus.yml \
-       --storage.tsdb.path=/prometheus \
-       --web.console.libraries=/etc/prometheus/console_libraries \
-       --web.console.templates=/etc/prometheus/consoles \
-       --storage.tsdb.retention.time=200h \
-       --web.enable-lifecycle
-     ```
+
+            docker run -d \
+                  --name prometheus \
+                  --restart=unless-stopped \
+                  -p 9090:9090 \
+                  -v prometheus-data:/prometheus \
+                  -v $(pwd)/prometheus:/etc/prometheus \
+                  prom/prometheus \
+                  --config.file=/etc/prometheus/prometheus.yml \
+                  --storage.tsdb.path=/prometheus \
+                  --web.console.libraries=/etc/prometheus/console_libraries \
+                  --web.console.templates=/etc/prometheus/consoles \
+                  --storage.tsdb.retention.time=200h \
+                  --web.enable-lifecycle
+
       - Проверить работу: открыть `http://localhost:9090` в браузере
 
 4. **Запуск Grafana:**
       - Создать том для данных Grafana:
-     ```bash
-     docker volume create grafana-data
-     ```
+
+            docker volume create grafana-data
+
       - Запустить контейнер Grafana:
-     ```bash
-     docker run -d \
-       --name grafana \
-       --restart=unless-stopped \
-       -p 3000:3000 \
-       -v grafana-data:/var/lib/grafana \
-       -e "GF_SECURITY_ADMIN_PASSWORD=admin" \
-       grafana/grafana
-     ```
+
+            docker run -d \
+                  --name grafana \
+                  --restart=unless-stopped \
+                  -p 3000:3000 \
+                  -v grafana-data:/var/lib/grafana \
+                  -e "GF_SECURITY_ADMIN_PASSWORD=admin" \
+                  grafana/grafana
+
       - Проверить работу: открыть `http://localhost:3000` в браузере (логин: admin, пароль: admin)
 
 5. **Настройка Grafana:**
@@ -136,9 +134,11 @@
 
 4. **Перебор страниц через ffuf:**
       - Запустить ffuf для поиска скрытых директорий:
-     ```bash
-     ffuf -w /path/to/wordlist.txt -u http://example.com/FUZZ -mc 200,301,302,403
-     ```
+
+
+            ffuf -w /path/to/wordlist.txt -u http://example.com/FUZZ -mc 200,301,302,403
+
+
       - Попробовать разные wordlist'ы (common.txt, directory-list-2.3-medium.txt)
       - Настроить фильтры для исключения ложных срабатываний
       - Проанализировать найденные директории и файлы
