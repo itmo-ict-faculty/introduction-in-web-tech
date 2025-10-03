@@ -30,6 +30,7 @@ nav:
   - Introduction: "index.md"
   - Education:
     - Labs: "education/labs.md"
+    - Coursework: "education/coursework2025-2026/coursework.md"
     - Lecture: "education/lecture.md"
     #- Practices: "education/practice.md"
     #- Additional materials: "education/additional_materials.md"
