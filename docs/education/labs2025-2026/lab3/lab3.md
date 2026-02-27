@@ -53,11 +53,16 @@
       - Создать том для данных Prometheus:
 
             docker volume create prometheus-data
-
-      - Запустить контейнер Prometheus:
+        
+      - Prometheus - приложение, которое отвечает за сбор метрик. Для их визуализации позже будет запущено другое приложение - Grafana. Чтобы они могли работать вместе, нужно создать для них общую сеть:
+        
+            docker network create monitoring
+        
+      - Выйти на папку выше в консоли, убедиться что вы находитесь над уровнем папки prometheus. Запустить контейнер Prometheus:
 
             docker run -d \
                   --name prometheus \
+                  --network monitoring \
                   --restart=unless-stopped \
                   -p 9090:9090 \
                   -v prometheus-data:/prometheus \
@@ -71,8 +76,9 @@
                   --web.enable-lifecycle
 
       - Проверить работу: открыть `http://localhost:9090` в браузере
+      - В случае неполадок можно запустить команду docker logs prometheus. Там будет выведена ошибка, указывающая на причину неработающего контейнера. В случае обнаружения подобной ошибки рекомендуется попробовать починить ее самостоятельно.
 
-4. **Запуск Grafana:**
+5. **Запуск Grafana:**
       - Создать том для данных Grafana:
 
             docker volume create grafana-data
@@ -81,6 +87,7 @@
 
             docker run -d \
                   --name grafana \
+                  --network monitoring \
                   --restart=unless-stopped \
                   -p 3000:3000 \
                   -v grafana-data:/var/lib/grafana \
@@ -89,7 +96,7 @@
 
       - Проверить работу: открыть `http://localhost:3000` в браузере (логин: admin, пароль: admin)
 
-5. **Настройка Grafana:**
+6. **Настройка Grafana:**
       - Войти в Grafana (admin/admin)
       - Добавить источник данных Prometheus:
         - Configuration → Data Sources → Add data source
@@ -102,7 +109,7 @@
         - Добавить метрику: `node_cpu_seconds_total`
         - Сохранить дашборд
 
-6. **Тестирование системы:**
+7. **Тестирование системы:**
       - Проверить все контейнеры: `docker ps`
       - Открыть Prometheus и убедиться, что метрики собираются
       - Открыть Grafana и проверить отображение графиков
